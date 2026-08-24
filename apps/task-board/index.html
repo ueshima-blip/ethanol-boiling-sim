@@ -452,7 +452,7 @@ button{font-family:inherit}
 "use strict";
 (function(){
   /* ---------- 保存（file:// でも落ちない） ---------- */
-  var APP_VER='2026.08.21m';   // バージョン（更新のたびに変える）。メニューに表示
+  var APP_VER='2026.08.22';   // バージョン（更新のたびに変える）。メニューに表示
   var SKEY='taskboard.v2', TKEY='taskboard.theme', mem={};
   function lsGet(k){try{return localStorage.getItem(k)}catch(e){return (k in mem)?mem[k]:null}}
   function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}
