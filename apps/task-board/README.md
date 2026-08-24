@@ -5,8 +5,8 @@
 **インストール不要・完全オフライン・外部送信なし。** `index.html` をダブルクリックするだけで使えます（Windows／Edge・Chrome を想定）。デザインは **NEON / GLASS / MONO** の3種類を切り替えられます。
 
 > 📦 **他の先生への配布方法（これに統一）**
-> 1. 配布先（`edu-tools-jp/koumu`）の Pages に置き、次のURLを共有：
->    **`https://edu-tools-jp.github.io/koumu/taskboard/`**
+> 1. 配布先（`edu-tools-jp/taskboard`）の Pages に置き、次のURLを共有：
+>    **`https://edu-tools-jp.github.io/taskboard/`**
 > 2. 受け取った先生は、Edge/Chrome でそのURLを開き、**アドレスバーの「インストール」アイコン**から「アプリとしてインストール」→ タブ・住所バーの無い専用ウィンドウで使えます。
 > 3. 紹介・インストール・使い方をまとめた **[`タスクボード_かんたんガイド.pdf`](タスクボード_かんたんガイド.pdf)（A4・1枚）** を一緒に配ってください。
 >
@@ -97,7 +97,7 @@
 
 **更新を配る側（メンテナンス）の手順**：
 1. `index.html` の先頭付近にある **`var APP_VER='YYYY.MM.DD';`** を新しい値に上げる（バージョン表示・更新確認の目印）
-2. 変更した `index.html`（必要なら `sw.js` も）を **`edu-tools-jp/koumu` の `taskboard/` に上書きアップロード**
+2. 変更した `index.html`（必要なら `sw.js` も）を **`edu-tools-jp/taskboard` の直下に上書きアップロード**
 3. 先生は「最新版に更新」を押す（または開き直す）→ 最新版に
 
 > 仕組み：Service Worker がアプリ本体(HTML)を**オンライン時は毎回サーバに確認**して最新化。「最新版に更新」はキャッシュを消して再取得します。オフライン時は従来どおりキャッシュで起動します。
