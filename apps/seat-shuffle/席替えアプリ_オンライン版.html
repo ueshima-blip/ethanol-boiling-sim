@@ -671,11 +671,14 @@ textarea.fi{resize:vertical;min-height:105px;font-size:12px;line-height:1.6;}
         <p class="fhint" style="margin-bottom:8px;">配慮が必要な生徒が多いときのモードです。<b>職員室で先に席を決めて調整</b>しておき、教室ではその座席になるようルーレットを回せます。</p>
         <div class="infob" style="margin-bottom:8px;">
           <b>使い方</b><br>
-          ① 職員室で「⚡ 瞬時に決定」または「🎰 ルーレット」を回す<br>
+          <b>【職員室で】</b><br>
+          ① 上部の「⚡ 瞬時に決定」を押して席を決める<br>
           ② 「🔄 入替」で必要な席を調整する<br>
           ③ 上部の「✅ この座席で確定」を押す（座席表は<b>空席表示に戻ります</b>）<br>
-          ④ 教室でルーレットを回すと、確定した座席のとおりに決まります
+          <b>【教室で】</b><br>
+          ④ 「🎰 一人ずつルーレット」「🎲 一括ルーレット」を回すと、確定した座席のとおりに決まります
         </div>
+        <p class="fhint" style="margin-bottom:8px;">※ ルーレットは<b>教室で</b>回します。職員室での席決めは「⚡ 瞬時に決定」だけで大丈夫です。</p>
         <div id="precheckStatus"></div>
       </div>
       <div class="fsec">
@@ -4049,7 +4052,7 @@ function refreshPrecheckUI(){
   if(!obj){
     el.innerHTML = `<div class="warn-box" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;">
       <b>まだ確定していません</b><br>
-      席替えを実行して調整したあと、上部の「✅ この座席で確定」を押してください。<br>
+      上部の「⚡ 瞬時に決定」で席を決め、「🔄 入替」で調整したあと、「✅ この座席で確定」を押してください。<br>
       このまま教室でルーレットを回すと、いつもどおりその場でランダムに決まります。
     </div>`;
     return;
