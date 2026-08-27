@@ -429,7 +429,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <button class="stab" onclick="switchTab('group')" id="tab-group">班色</button>
     <button class="stab" onclick="switchTab('cond')" id="tab-cond">条件</button>
     <button class="stab" onclick="switchTab('history')" id="tab-history">履歴</button>
-    <button class="stab" onclick="switchTab('settings')" id="tab-settings">設定<span id="backupDot" style="display:none;color:#f59e0b;font-size:9px;vertical-align:super;margin-left:1px;" title="バックアップをおすすめします">●</span></button>
+    <button class="stab" onclick="switchTab('settings')" id="tab-settings">設定<span id="precheckDot" style="display:none;color:#0ea5e9;font-size:9px;vertical-align:super;margin-left:1px;" title="事前に確定した座席があります">🔒</span><span id="backupDot" style="display:none;color:#f59e0b;font-size:9px;vertical-align:super;margin-left:1px;" title="バックアップをおすすめします">●</span></button>
   </div>
   <div class="scontent">
 
@@ -686,6 +686,25 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <!-- 設定タブ -->
     <div class="spanel" id="panel-settings">
       <div class="fsec">
+        <div class="ftitle">事前に座席を確認する</div>
+        <label class="cb-row">
+          <input type="checkbox" id="precheckEnabled" onchange="savePrecheckPref()">
+          🔒 事前に座席を確認する
+        </label>
+        <p class="fhint" style="margin-bottom:8px;">配慮が必要な生徒が多いときのモードです。<b>職員室で先に席を決めて調整</b>しておき、教室ではその座席になるようルーレットを回せます。</p>
+        <div class="infob" style="margin-bottom:8px;">
+          <b>使い方</b><br>
+          <b>【職員室で】</b><br>
+          ① 上部の「⚡ 瞬時に決定」を押して席を決める<br>
+          ② 「🔄 入替」で必要な席を調整する<br>
+          ③ 上部の「✅ この座席で確定」を押す（座席表は<b>空席表示に戻ります</b>）<br>
+          <b>【教室で】</b><br>
+          ④ 「🎰 一人ずつルーレット」「🎲 一括ルーレット」を回すと、確定した座席のとおりに決まります
+        </div>
+        <p class="fhint" style="margin-bottom:8px;">※ ルーレットは<b>教室で</b>回します。職員室での席決めは「⚡ 瞬時に決定」だけで大丈夫です。</p>
+        <div id="precheckStatus"></div>
+      </div>
+      <div class="fsec">
         <div class="ftitle">効果音</div>
         <label class="cb-row">
           <input type="checkbox" id="soundEnabled" checked onchange="saveSoundPref()">
@@ -732,6 +751,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <button class="btn bts" onclick="startRoulette('bulk')">🎲 一括ルーレット</button>
     <div class="tdiv"></div>
     <button class="btn bts" id="swapModeBtn" onclick="toggleSwapMode()">🔄 入替</button>
+    <button class="btn btp" id="precheckConfirmBtn" onclick="confirmPrecheckSeating()" style="display:none;">✅ この座席で確定</button>
     <div class="tdiv"></div>
     <span class="tlbl">視点</span>
     <button class="view-btn active" id="viewBtnStudent" onclick="setView('student')">生徒視点</button>
@@ -1200,8 +1220,8 @@ function refreshHeader(){
     rs.appendChild(o);
   });
 }
-function switchClass(id){app.currentClassId=id;getLayout(id,app.currentRoomId);save();syncLayoutInputs();renderStudentList();renderGrid();updateAssignInfo();renderGroupList();refreshCondStudentSelects();refreshPinStudentSelect();renderCondList();renderPinList();refreshCopyRoomSelect();refreshResumeBanner();}
-function switchRoom(id){app.currentRoomId=id;getLayout(app.currentClassId,id);save();syncLayoutInputs();renderGrid();updateAssignInfo();renderGroupList();refreshCopyRoomSelect();renderCondList();renderPinList();refreshResumeBanner();}
+function switchClass(id){precheckPeek=false;app.currentClassId=id;getLayout(id,app.currentRoomId);save();syncLayoutInputs();renderStudentList();renderGrid();updateAssignInfo();renderGroupList();refreshCondStudentSelects();refreshPinStudentSelect();renderCondList();renderPinList();refreshCopyRoomSelect();refreshResumeBanner();}
+function switchRoom(id){precheckPeek=false;app.currentRoomId=id;getLayout(app.currentClassId,id);save();syncLayoutInputs();renderGrid();updateAssignInfo();renderGroupList();refreshCopyRoomSelect();renderCondList();renderPinList();refreshResumeBanner();}
 
 function addClass(){
   const name=document.getElementById('newClassName').value.trim();
@@ -1238,7 +1258,7 @@ function deleteClass(id){
   Object.keys(app.assignments||{}).forEach(k=>{ if(k.startsWith(id+'_')) delete app.assignments[k]; });
   Object.keys(app.rooms).forEach(rid=>{
     const ak=`${id}_${rid}`;
-    ['_cond','_pins','_gmode','_zsplit'].forEach(p=>localStorage.removeItem(ak+p));
+    ['_cond','_pins','_gmode','_zsplit','_precheck'].forEach(p=>localStorage.removeItem(ak+p));
     localStorage.removeItem(`sekigae_hist_${id}_${rid}`);
     localStorage.removeItem(rlKeyFor(id, rid));
   });
@@ -1256,7 +1276,7 @@ function deleteRoom(id){
   Object.keys(app.assignments||{}).forEach(k=>{ if(k.endsWith('_'+id)) delete app.assignments[k]; });
   Object.keys(app.classes).forEach(cid=>{
     const ak=`${cid}_${id}`;
-    ['_cond','_pins','_gmode','_zsplit'].forEach(p=>localStorage.removeItem(ak+p));
+    ['_cond','_pins','_gmode','_zsplit','_precheck'].forEach(p=>localStorage.removeItem(ak+p));
     localStorage.removeItem(`sekigae_hist_${cid}_${id}`);
     localStorage.removeItem(rlKeyFor(cid, id));
   });
@@ -1649,7 +1669,9 @@ function calcNameFontSize(name, seatW, seatH, hasNum, hasYomi){
 }
 
 function renderGrid(){
-  const room=curRoom();const cls=curClass();const asgn=curAsgn();
+  const room=curRoom();const cls=curClass();
+  // 事前確認モードで「確定した座席を確認」中は、確定データの方を表示する
+  const asgn=(precheckPeek && getPrecheckSeating()) ? getPrecheckSeating().assign : curAsgn();
   updateDecoTitle();
   const showYomi=document.getElementById('showYomi')?.checked;
   const showNum=document.getElementById('showNumber')?.checked;
@@ -1852,6 +1874,7 @@ function renderGrid(){
 
   const enabled=room.seats.filter(s=>s.enabled&&!s.skipAssign).length;
   updateAssignInfo();
+  refreshPrecheckUI();
 }
 
 function calcGenderStats(){
@@ -1885,7 +1908,9 @@ function checkGenderMatch(){
 }
 
 function updateAssignInfo(){
-  const cls=curClass();const asgn=curAsgn();
+  const cls=curClass();
+  // 確定した座席を確認表示している間は、そちらの人数を出す
+  const asgn=(precheckPeek && getPrecheckSeating()) ? getPrecheckSeating().assign : curAsgn();
   const assigned=Object.keys(asgn).filter(k=>asgn[k]).length;
   const total=cls?.students?.length||0;
   document.getElementById('assignInfo').textContent=total?`${assigned}/${total}名配置済み`:'名簿を読み込んでください';
@@ -2275,6 +2300,13 @@ function shuffleInstant(){
   }
   const gErr=checkGenderMatch();
   if(gErr){showToast(`⚠ 席替えできません：${gErr}`);return;}
+
+  // 事前に確定した座席があるときは、うっかり抽選し直して消してしまわないよう確認する
+  if(isPrecheckMode() && getPrecheckSeating()){
+    if(!confirm('事前に確定した座席があります。\n\n破棄して、新しく抽選し直しますか？\n（「キャンセル」で確定した座席をそのまま残します）')) return;
+    clearPrecheckSeating();
+  }
+
   const conds=getConditions();
   const mode=getGenderMode();
   const zsplit=getZoneSplit();
@@ -2635,48 +2667,65 @@ function startRoulette(mode){
   if(gErr){showToast(`⚠ 席替えできません：${gErr}`);return;}
   const conds=getConditions();
 
-  // 事前チェック：条件同士が矛盾していないか（実行前に警告して中止できるようにする）
-  const condConf2=detectConditionConflicts(conds);
-  if(condConf2.length){
-    const goOn=confirm(`⚠ 距離条件をすべて満たすことができません：\n\n${condConf2.map(m=>'・'+m).join('\n')}\n\nこのままルーレットを始めると、満たせない条件が出ます。始めますか？\n（「キャンセル」で中止して条件タブを見直せます）`);
-    if(!goOn){ showToast('中止しました。条件タブをご確認ください'); return; }
+  // ── 事前に座席を確認するモード：確定した座席があれば、抽選せずそのとおりに決める
+  let finalAssign = null;
+  const preObj = isPrecheckMode() ? getPrecheckSeating() : null;
+  if(preObj && precheckSeatingValid(preObj)){
+    finalAssign = { ...preObj.assign };
+  } else if(preObj){
+    // 確定後に名簿・レイアウトが変わってしまった場合
+    if(!confirm('⚠ 事前に確定した座席が使えなくなっています。\n（確定した後に名簿または座席レイアウトが変わりました）\n\n確定を破棄して、その場でランダムに決めますか？\n（「キャンセル」で中止できます）')) return;
+    clearPrecheckSeating();
+  } else if(isPrecheckMode()){
+    // モードONなのに事前確定を忘れているケースを取りこぼさない
+    if(!confirm('「事前に座席を確認する」モードがONですが、確定した座席がありません。\n\nこのまま、その場でランダムに決めますか？\n（「キャンセル」で中止して、先に座席を確定できます）')) return;
   }
 
-  // Pre-decide final assignments using constraints
-  const gMode=getGenderMode();
-  const gZsplit=getZoneSplit();
+  if(!finalAssign){
 
-  // 1回分の配置を生成（男女ルール／自由 → ピン固定まで反映した最終形を返す）
-  // ※ピン適用後に距離条件を判定しないと、ピンの入替えで条件が壊れることがある
-  const buildOnce=()=>{
-    let a;
-    if(gMode!=='free'){
-      a=buildGenderZoneSeats(room.seats,cls.students,gMode,gZsplit);
-    }else{
-      const sh=shuffle(cls.students);const se=shuffle([...enabled]);a={};
-      sh.forEach((s,i)=>{a[se[i].id]=s.id;});
+    // 事前チェック：条件同士が矛盾していないか（実行前に警告して中止できるようにする）
+    const condConf2=detectConditionConflicts(conds);
+    if(condConf2.length){
+      const goOn=confirm(`⚠ 距離条件をすべて満たすことができません：\n\n${condConf2.map(m=>'・'+m).join('\n')}\n\nこのままルーレットを始めると、満たせない条件が出ます。始めますか？\n（「キャンセル」で中止して条件タブを見直せます）`);
+      if(!goOn){ showToast('中止しました。条件タブをご確認ください'); return; }
     }
-    if(!a) return null;
-    return applyPinsToAssignment(a,cls.students,enabled);
-  };
 
-  let finalAssign=buildOnce();
-  if(conds.length&&finalAssign){
-    let attempts=0;
-    let ok=checkConstraints(finalAssign,conds,cls.students,room.seats);
-    while(!ok&&attempts<5000){
-      finalAssign=buildOnce();
-      ok=checkConstraints(finalAssign,conds,cls.students,room.seats);
-      attempts++;
+    // Pre-decide final assignments using constraints
+    const gMode=getGenderMode();
+    const gZsplit=getZoneSplit();
+
+    // 1回分の配置を生成（男女ルール／自由 → ピン固定まで反映した最終形を返す）
+    // ※ピン適用後に距離条件を判定しないと、ピンの入替えで条件が壊れることがある
+    const buildOnce=()=>{
+      let a;
+      if(gMode!=='free'){
+        a=buildGenderZoneSeats(room.seats,cls.students,gMode,gZsplit);
+      }else{
+        const sh=shuffle(cls.students);const se=shuffle([...enabled]);a={};
+        sh.forEach((s,i)=>{a[se[i].id]=s.id;});
+      }
+      if(!a) return null;
+      return applyPinsToAssignment(a,cls.students,enabled);
+    };
+
+    finalAssign=buildOnce();
+    if(conds.length&&finalAssign){
+      let attempts=0;
+      let ok=checkConstraints(finalAssign,conds,cls.students,room.seats);
+      while(!ok&&attempts<5000){
+        finalAssign=buildOnce();
+        ok=checkConstraints(finalAssign,conds,cls.students,room.seats);
+        attempts++;
+      }
+      if(!ok){
+        // 配置前に警告し、中止できるようにする
+        const viols=listCondViolations(finalAssign,conds,cls.students,room.seats);
+        const goOn=confirm(`⚠ 距離条件を満たす配置が見つかりませんでした。\n\n満たせない条件：\n${viols.map(v=>'・'+v).join('\n')}\n\n固定（ピン）や男女指定席との組み合わせで不可能になっている場合があります。\nこのままルーレットを始めますか？（「キャンセル」で中止）`);
+        if(!goOn){ showToast('中止しました。条件・固定・席設定をご確認ください'); return; }
+      }
     }
-    if(!ok){
-      // 配置前に警告し、中止できるようにする
-      const viols=listCondViolations(finalAssign,conds,cls.students,room.seats);
-      const goOn=confirm(`⚠ 距離条件を満たす配置が見つかりませんでした。\n\n満たせない条件：\n${viols.map(v=>'・'+v).join('\n')}\n\n固定（ピン）や男女指定席との組み合わせで不可能になっている場合があります。\nこのままルーレットを始めますか？（「キャンセル」で中止）`);
-      if(!goOn){ showToast('中止しました。条件・固定・席設定をご確認ください'); return; }
-    }
+    if(lastPinUnplaced.length) showToast(`固定を反映できなかった生徒：${lastPinUnplaced.join('、')}（席数をご確認ください）`);
   }
-  if(lastPinUnplaced.length) showToast(`固定を反映できなかった生徒：${lastPinUnplaced.join('、')}（席数をご確認ください）`);
 
   rlMode=mode;
   rlRunning=false;rlIndex=0;rlActiveSeatIdx=-1;
@@ -2801,6 +2850,8 @@ function toggleSeqRoulette(){
       save();
       // 完了したのでセッションを破棄
       clearRlSession();
+      // 事前に確定した座席はここで役目を終えるので自動で解除する
+      clearPrecheckSeating();
       document.getElementById('rlStartBtn').textContent='完了';
       document.getElementById('rlStartBtn').className='rl-btn start';
       document.getElementById('rlDoneLabel').style.display='block';
@@ -2898,6 +2949,8 @@ function toggleBulkRoulette(){
     save();
     // 完了したのでセッションを破棄
     clearRlSession();
+    // 事前に確定した座席はここで役目を終えるので自動で解除する
+    clearPrecheckSeating();
     document.getElementById('rlStartBtn').textContent='完了';
     document.getElementById('rlStartBtn').className='rl-btn start';
     document.getElementById('rlDoneLabel').style.display='block';
@@ -3831,6 +3884,10 @@ let swapMode = false;
 let swapFirstSeatId = null;
 
 function toggleSwapMode(){
+  if(precheckPeek){
+    showToast('確定した座席を確認中です。調整するには設定タブの「✏ 確定を解除して調整し直す」を押してください');
+    return;
+  }
   swapMode = !swapMode;
   swapFirstSeatId = null;
   const btn = document.getElementById('swapModeBtn');
@@ -3846,6 +3903,7 @@ function toggleSwapMode(){
 }
 
 function handleSwapClick(seatId){
+  if(precheckPeek) return; // 確認表示中は座席を動かさない
   const asgn = curAsgn();
   if(!asgn[seatId] && !swapFirstSeatId){ showToast('生徒がいない席は選択できません'); return; }
   if(!swapFirstSeatId){
@@ -3874,6 +3932,176 @@ function handleSwapClick(seatId){
 }
 
 // ============================================================
+// 事前に座席を確認するモード（PRECHECK）
+// ============================================================
+// 配慮が必要な生徒が多いときのためのモード。
+// 職員室で先に席を決めて「入替」で調整し、確定しておく。教室でルーレットを回すと
+// その確定した座席のとおりに決まる（演出は通常どおり）。
+//
+// ポイント：確定した座席は座席表（app.assignments）とは別に保存し、画面上は
+// 「空席」のままにする。こうすると教室でモニターに映しても、これから決まるように見える。
+
+const PRECHECK_PREF_KEY = 'sekigae_precheck';          // モードON/OFF（アプリ全体で共通）
+function precheckKey(){ return akey() + '_precheck'; } // 確定した座席（クラス×教室ごと）
+
+let precheckPeek = false; // 確定した座席を一時的に表示しているか（教師の確認用）
+
+function isPrecheckMode(){
+  try{ return localStorage.getItem(PRECHECK_PREF_KEY) === '1'; }catch{ return false; }
+}
+
+function savePrecheckPref(){
+  const on = !!document.getElementById('precheckEnabled')?.checked;
+  try{ localStorage.setItem(PRECHECK_PREF_KEY, on ? '1' : '0'); }catch{}
+  if(!on) precheckPeek = false;
+  renderGrid();
+  showToast(on ? '事前に座席を確認するモードをONにしました' : '事前に座席を確認するモードをOFFにしました');
+}
+
+function getPrecheckSeating(){
+  try{
+    const obj = JSON.parse(localStorage.getItem(precheckKey()) || 'null');
+    if(!obj || !obj.assign || !Object.keys(obj.assign).length) return null;
+    return obj;
+  }catch{ return null; }
+}
+function savePrecheckSeating(assign){
+  try{
+    localStorage.setItem(precheckKey(), JSON.stringify({ assign, savedAt: new Date().toISOString() }));
+  }catch{ showToast('確定した座席を保存できませんでした'); }
+}
+function clearPrecheckSeating(){
+  try{ localStorage.removeItem(precheckKey()); }catch{}
+  precheckPeek = false;
+}
+
+// 確定したときから名簿・座席レイアウトが変わっていないか
+// （変わっていると、その座席のとおりには決められない）
+function precheckSeatingValid(obj){
+  const o = obj || getPrecheckSeating();
+  if(!o) return false;
+  const cls = curClass(); const room = curRoom();
+  if(!cls || !room) return false;
+  const entries = Object.entries(o.assign).filter(([,stId]) => !!stId);
+  if(!entries.length) return false;
+  const seatOK = id => room.seats.some(s => s.id === id && s.enabled && !s.skipAssign);
+  const studentOK = id => cls.students.some(s => s.id === id);
+  if(!entries.every(([seatId, stId]) => seatOK(seatId) && studentOK(stId))) return false;
+  // 名簿の人数が変わっていないか（転入・転出・削除があれば無効）
+  return new Set(entries.map(([,stId]) => stId)).size === cls.students.length;
+}
+
+// 現在の座席表を確定する（座席表は空席に戻し、確定データとして別に保存）
+function confirmPrecheckSeating(){
+  const asgn = curAsgn();
+  const count = Object.keys(asgn).filter(k => asgn[k]).length;
+  if(!count){ showToast('先に席替えを実行してください（⚡ 瞬時に決定 など）'); return; }
+  const cls = curClass();
+  if(cls && count < cls.students.length){
+    const rest = cls.students.length - count;
+    if(!confirm(`席が決まっていない生徒が ${rest} 名います。\nこのまま確定しますか？`)) return;
+  }
+  savePrecheckSeating({ ...asgn });
+  // 座席表は空席に戻す（教室で「これから決まる」ように見せるため）
+  app.assignments[akey()] = {};
+  save();
+  clearRlSession();
+  refreshResumeBanner();
+  if(swapMode) toggleSwapMode();
+  precheckPeek = false;
+  renderGrid();
+  showToast('座席を確定しました。教室でルーレットを回すとこの座席になります');
+}
+
+// 確定を解除して座席表に戻す（もう一度調整したいとき）
+function unlockPrecheckSeating(){
+  const obj = getPrecheckSeating();
+  if(!obj){ showToast('確定した座席はありません'); return; }
+  app.assignments[akey()] = { ...obj.assign };
+  save();
+  clearPrecheckSeating();
+  renderGrid();
+  showToast('確定を解除しました。「🔄 入替」で調整して、もう一度確定できます');
+}
+
+// 使えなくなった確定データを破棄する
+function discardPrecheckSeating(){
+  const btn = document.getElementById('precheckDiscardBtn');
+  // 2段階確認（iPad でも押しやすいよう confirm を使わない）
+  if(btn && !btn.dataset.confirmed){
+    btn.dataset.confirmed = '1';
+    btn.textContent = '✓ もう一度押して破棄';
+    setTimeout(()=>{ if(btn){ btn.dataset.confirmed=''; renderGrid(); } }, 3000);
+    return;
+  }
+  clearPrecheckSeating();
+  renderGrid();
+  showToast('確定した座席を破棄しました');
+}
+
+// 確定した座席を一時的に表示／非表示（教師が職員室で確認するため）
+function togglePrecheckPeek(){
+  if(!getPrecheckSeating()){ showToast('確定した座席はありません'); return; }
+  precheckPeek = !precheckPeek;
+  const peeking = precheckPeek;
+  renderGrid();
+  if(peeking) showToast('確定した座席を表示中です。教室で映す前に「🙈 隠す」を押してください');
+}
+
+// 設定タブの状態表示・ツールバーのボタン・タブのバッジを更新
+function refreshPrecheckUI(){
+  const on = isPrecheckMode();
+  const cb = document.getElementById('precheckEnabled');
+  if(cb) cb.checked = on;
+
+  const obj = getPrecheckSeating();
+  const valid = obj ? precheckSeatingValid(obj) : false;
+  const asgnCount = Object.keys(curAsgn()).filter(k => curAsgn()[k]).length;
+
+  // ツールバーの「この座席で確定」ボタン：モードON・未確定・座席が決まっているときだけ表示
+  const btn = document.getElementById('precheckConfirmBtn');
+  if(btn) btn.style.display = (on && !obj && asgnCount > 0) ? '' : 'none';
+
+  // 設定タブのバッジ（確定があることを教師が気づけるように）
+  const dot = document.getElementById('precheckDot');
+  if(dot) dot.style.display = (on && obj) ? '' : 'none';
+
+  const el = document.getElementById('precheckStatus');
+  if(!el) return;
+  if(!on){
+    el.innerHTML = '';
+    return;
+  }
+  if(!obj){
+    el.innerHTML = `<div class="warn-box" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;">
+      <b>まだ確定していません</b><br>
+      上部の「⚡ 瞬時に決定」で席を決め、「🔄 入替」で調整したあと、「✅ この座席で確定」を押してください。<br>
+      このまま教室でルーレットを回すと、いつもどおりその場でランダムに決まります。
+    </div>`;
+    return;
+  }
+  const dt = new Date(obj.savedAt || Date.now());
+  const dateStr = dt.toLocaleDateString('ja-JP') + ' ' + dt.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
+  const num = Object.keys(obj.assign).filter(k => obj.assign[k]).length;
+  if(!valid){
+    el.innerHTML = `<div class="warn-box">
+      <b>⚠ 確定した座席が使えなくなりました</b><br>
+      確定した後に名簿または座席レイアウトが変わっています（確定日時：${dateStr}）。<br>
+      破棄して、もう一度席を決め直してください。
+      <button class="btn btd btn-full bsm" id="precheckDiscardBtn" style="margin-top:6px;" onclick="discardPrecheckSeating()">🗑 確定した座席を破棄</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `<div class="warn-box" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;">
+    <b>🔒 座席は確定済みです（${num}名）</b><br>
+    確定日時：${dateStr}<br>
+    教室でルーレットを回すと、この座席のとおりに決まります。座席表は空席のまま表示されます。
+    <button class="btn bts btn-full bsm" style="margin-top:6px;" onclick="togglePrecheckPeek()">${precheckPeek ? '🙈 隠す（教室ではこちら）' : '👁 確定した座席を確認する'}</button>
+    <button class="btn btw btn-full bsm" style="margin-top:4px;" onclick="unlockPrecheckSeating()">✏ 確定を解除して調整し直す</button>
+  </div>`;
+}
+
+// ============================================================
 // CLEAR SEATING（座席表リセット — 名簿・条件・固定はそのまま）
 // ============================================================
 function clearSeating(){
@@ -3898,6 +4126,8 @@ function clearSeating(){
   save();
   // 中断中のルーレットセッションも破棄
   clearRlSession();
+  // 事前に確定した座席も破棄（新しく決め直すため）
+  clearPrecheckSeating();
   refreshResumeBanner();
 
   // 入替モードが有効なら解除
@@ -4342,7 +4572,7 @@ function renderMiniGrid(entry){
 // バックアップ対象データを収集（メイン＋付属の全キー）
 function collectBackupExtra(parsed){
   const extra = {};
-  const prefix = ['_cond','_gmode','_zsplit','_pins'];
+  const prefix = ['_cond','_gmode','_zsplit','_pins','_precheck'];
   // 全クラス×全教室の組み合わせで付属キー（条件・班・履歴・中断ルーレット等）を収集
   Object.keys(parsed.classes||{}).forEach(cid=>{
     Object.keys(parsed.rooms||{}).forEach(rid=>{
@@ -4611,7 +4841,7 @@ function doWipeRosters(){
   Object.keys(app.classes).forEach(cid=>{
     Object.keys(app.rooms).forEach(rid=>{
       const ak=`${cid}_${rid}`;
-      ['_cond','_pins','_gmode','_zsplit'].forEach(p=>localStorage.removeItem(ak+p));
+      ['_cond','_pins','_gmode','_zsplit','_precheck'].forEach(p=>localStorage.removeItem(ak+p));
       localStorage.removeItem(`sekigae_hist_${cid}_${rid}`);
       localStorage.removeItem(rlKeyFor(cid, rid));
     });
@@ -4631,7 +4861,7 @@ function doWipeRooms(){
   Object.keys(app.classes).forEach(cid=>{
     Object.keys(app.rooms).forEach(rid=>{
       const ak=`${cid}_${rid}`;
-      ['_cond','_pins','_gmode','_zsplit'].forEach(p=>localStorage.removeItem(ak+p));
+      ['_cond','_pins','_gmode','_zsplit','_precheck'].forEach(p=>localStorage.removeItem(ak+p));
       localStorage.removeItem(`sekigae_hist_${cid}_${rid}`);
       localStorage.removeItem(rlKeyFor(cid, rid));
     });
