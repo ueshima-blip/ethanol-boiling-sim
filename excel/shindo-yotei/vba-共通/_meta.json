@@ -1,0 +1,40 @@
+{
+  "xlsm_path": "進度予定表システム_共通.xlsm",
+  "modules": [
+    {
+      "name": "ThisWorkbook",
+      "file": "vba-共通/ThisWorkbook.cls",
+      "textoffset": 4609,
+      "target_compressed_size": 1244,
+      "stream_size": 5853
+    },
+    {
+      "name": "Sheet1",
+      "file": "vba-共通/Sheet1.cls",
+      "textoffset": 1008,
+      "target_compressed_size": 172,
+      "stream_size": 1180
+    },
+    {
+      "name": "Module1",
+      "file": "vba-共通/Module1.bas",
+      "textoffset": 75360,
+      "target_compressed_size": 25635,
+      "stream_size": 100995
+    },
+    {
+      "name": "Sheet2",
+      "file": "vba-共通/Sheet2.cls",
+      "textoffset": 827,
+      "target_compressed_size": 172,
+      "stream_size": 999
+    },
+    {
+      "name": "Sheet3",
+      "file": "vba-共通/Sheet3.cls",
+      "textoffset": 827,
+      "target_compressed_size": 172,
+      "stream_size": 999
+    }
+  ]
+}
