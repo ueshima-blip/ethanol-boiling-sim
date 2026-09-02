@@ -14,8 +14,12 @@ Then:
   Excel to recompile from source rather than trust stale compiled p-code.
 - Repackages the .xlsm zip in place.
 
+The target .xlsm is whatever <vba_dir>/_meta.json points at, so each source
+directory always rebuilds its own workbook.
+
 Usage:
-    python scripts/build_vba.py
+    python scripts/build_vba.py            # vba/ → 鳴海版 xlsm
+    python scripts/build_vba.py vba-共通    # vba-共通/ → 学校共通版 xlsm
 """
 import hashlib
 import io
@@ -185,10 +189,11 @@ def invalidate_caches(ole, meta_modules):
 
 def main():
     repo_root = Path(__file__).resolve().parent.parent
-    vba_dir = repo_root / "vba"
+    vba_dirname = sys.argv[1] if len(sys.argv) > 1 else "vba"
+    vba_dir = repo_root / vba_dirname
     meta_path = vba_dir / "_meta.json"
     if not meta_path.exists():
-        sys.exit("vba/_meta.json not found. Run extract_vba.py first.")
+        sys.exit(f"{vba_dirname}/_meta.json not found. Run extract_vba.py first.")
     with open(meta_path, encoding='utf-8') as f:
         meta = json.load(f)
 

@@ -5,3 +5,8 @@ node_modules/
 
 # タスクボード ガイドの生成画像（build_guide.mjs で再生成）
 apps/task-board/guide/board.png
+
+# Python のキャッシュ・ビルド一時ディレクトリ
+__pycache__/
+*.pyc
+excel/*/.build_tmp/

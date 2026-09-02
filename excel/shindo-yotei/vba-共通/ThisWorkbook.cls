@@ -7,6 +7,7 @@ Attribute VB_Exposed = True
 Attribute VB_TemplateDerived = False
 Attribute VB_Customizable = True
 Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal target As Range)
+    If Sh.Name = "基本設定" Then 学活方式チェンジ処理 Sh, target
     If Left(Sh.Name, 1) <> "第" Then Exit Sub
     If target.Cells.Count > 1 Then Exit Sub
     If VarType(target.Value) = vbString Then If target.Value = "テスト" Then HandleTestEntry Sh, target: Exit Sub

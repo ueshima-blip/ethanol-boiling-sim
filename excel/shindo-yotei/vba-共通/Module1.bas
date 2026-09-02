@@ -46,7 +46,7 @@ Sub 設定を完了()
     Call 週案テンプレートを作成
     Call 基本設定にボタンを追加
     Dim ul As Variant: cfg.Cells.Locked = True
-    For Each ul In Array("B2:B3", "B6:B13", "B16:B20", "B23:B35", "B38:B43"): cfg.Range(CStr(ul)).Locked = False: Next ul
+    For Each ul In Array("B2:B4", "B6:B13", "B16:B20", "B23:B35", "B38:B43"): cfg.Range(CStr(ul)).Locked = False: Next ul
 
     休業設定を準備 cfg
     cfg.Protect ""
@@ -407,14 +407,15 @@ Sub 基本設定にボタンを追加()
     Dim i As Integer
     For i = 0 To c - 1: ws.Shapes(n(i)).Delete: Next i
     Dim bL As Double: bL = ws.Columns("E").Left + 5
-    Dim d(5, 1) As String
+    Dim d(6, 1) As String
     d(0, 0) = "新しい週を追加": d(0, 1) = "ボタン_新しい週"
     d(1, 0) = "1学期PDF出力": d(1, 1) = "ボタン_1学期PDF"
     d(2, 0) = "2学期PDF出力": d(2, 1) = "ボタン_2学期PDF"
     d(3, 0) = "3学期PDF出力": d(3, 1) = "ボタン_3学期PDF"
     d(4, 0) = "次年度ファイルを作成": d(4, 1) = "ボタン_次年度"
     d(5, 0) = "別ファイルからインポート": d(5, 1) = "ボタン_旧ファイル移行"
-    For i = 0 To 5
+    d(6, 0) = "全データ消去": d(6, 1) = "ボタン_全データ消去"
+    For i = 0 To 6
         Dim btn As Shape
         Set btn = ws.Shapes.AddFormControl(xlButtonControl, bL, ws.Rows(2 + i * 2).Top + 3, 120, 22)
         With btn: .Name = "Auto_" & i: .TextFrame.Characters.Text = d(i, 0)
@@ -816,6 +817,7 @@ Sub ボタン_2学期PDF():     Call 学期末PDF_2学期:   End Sub
 Sub ボタン_3学期PDF():     Call 学期末PDF_3学期:   End Sub
 Sub ボタン_次年度():       Call 次年度ファイルを作成:    End Sub
 Sub ボタン_旧ファイル移行(): Call 旧ファイルから移行:        End Sub
+Sub ボタン_全データ消去(): Call 全データ消去:        End Sub
 
 ' ================================================================
 ' 決裁欄を設定（L?P列）
@@ -853,7 +855,10 @@ Sub 集計補正(ws As Worksheet)
     Dim cfg As Worksheet: Set cfg = ThisWorkbook.Sheets("基本設定")
     Dim col As Integer, ai As Integer
 
-    ' --- 活動名を収集（学活は特活に統合）---
+    ' --- 学活カウント方式（基本設定B4）：「含む」=特活に合算 / それ以外=学活で独立 ---
+    Dim mergeGaku As Boolean
+    mergeGaku = (InStr(CStr(cfg.Range("B4").Value), "含") > 0)
+    ' --- 活動名を収集（mergeGaku のときのみ学活を特活に統合）---
     Dim actNames() As String, actCount As Integer: actCount = 0
     Dim srcRows As Variant: srcRows = Array(16, 17, 18, 19, 20)
     Dim hasToku As Boolean, hasGaku As Boolean
@@ -864,20 +869,19 @@ Sub 集計補正(ws As Worksheet)
         On Error Resume Next: nm = CStr(cfg.Range("B" & srcRows(ri)).Value): On Error GoTo 0
         If nm = "特活" Then hasToku = True
         If nm = "学活" Then hasGaku = True
-        If nm <> "" And nm <> "学活" Then
+        Dim skipIt As Boolean: skipIt = (mergeGaku And nm = "学活")
+        If nm <> "" And Not skipIt Then
             ReDim Preserve actNames(actCount)
-            If nm = "特活" And hasGaku Then
+            If mergeGaku And nm = "特活" And hasGaku Then
                 actNames(actCount) = "特活(学活含む)"
-            ElseIf nm = "特活" Then
-                actNames(actCount) = "特活"
             Else
                 actNames(actCount) = nm
             End If
             actCount = actCount + 1
         End If
     Next ri
-    ' 2回目パス：特活が後に来る場合の対応
-    If hasToku And hasGaku Then
+    ' 2回目パス：特活が後に来る場合の対応（合算モードのみ）
+    If mergeGaku And hasToku And hasGaku Then
         For ai = 0 To actCount - 1
             If actNames(ai) = "特活" Then actNames(ai) = "特活(学活含む)"
         Next ai
@@ -1078,13 +1082,11 @@ Sub Auto_Open()
     If cfg Is Nothing Then Exit Sub
     基本設定にボタンを追加
     cfg.Unprotect ""
+    学活方式を準備 cfg
     休業設定を準備 cfg
     cfg.Protect ""
 End Sub
 
-' ----
-' 【長期休業】設定セル(A37:B43)を準備
-' ----
 Private Sub 休業設定を準備(cfg As Worksheet)
     On Error Resume Next
     ' セクション見出し（A37 を既存見出し A5 と同じ書式に）
@@ -1180,3 +1182,62 @@ Function 休業スキップ調整(yr As String, md As String) As String
 eH:
     休業スキップ調整 = md
 End Function
+
+Public Sub 学活方式を準備(cfg As Worksheet)
+    On Error Resume Next
+    cfg.Range("A4").Value = "集計方式：学活"
+    If Trim(CStr(cfg.Range("B4").Value)) = "" Then cfg.Range("B4").Value = "学活で独立"
+    cfg.Range("B4").Locked = False
+    With cfg.Range("B4").Validation
+        .Delete
+        .Add Type:=xlValidateList, Formula1:="特活に含める,学活で独立"
+        .IgnoreBlank = True: .ShowError = False
+    End With
+    ' 集計方式に応じて特別活動①/②と説明欄を同期
+    Dim isMerge As Boolean
+    isMerge = (InStr(CStr(cfg.Range("B4").Value), "含") > 0)
+    If isMerge Then
+        cfg.Range("B16").Value = "特活"
+        cfg.Range("B17").Value = "学活"
+        cfg.Range("C16").Value = "集計では学活と合算されます"
+        cfg.Range("C17").ClearContents
+    Else
+        ' 独立モード：特別活動①/②を自動表示しない（自動設定値のみ消去）
+        If CStr(cfg.Range("B16").Value) = "特活" Then cfg.Range("B16").ClearContents
+        If CStr(cfg.Range("B17").Value) = "学活" Then cfg.Range("B17").ClearContents
+        cfg.Range("C16").ClearContents
+        cfg.Range("C17").ClearContents
+    End If
+End Sub
+
+Public Sub 学活方式チェンジ処理(Sh As Object, target As Range)
+    If Sh.Name <> "基本設定" Then Exit Sub
+    If target.Cells.Count <> 1 Then Exit Sub
+    If target.Address(False, False) <> "B4" Then Exit Sub
+    Application.EnableEvents = False
+    On Error Resume Next
+    Sh.Unprotect ""
+    学活方式を準備 Sh
+    Sh.Protect ""
+    Application.EnableEvents = True
+End Sub
+
+Sub 全データ消去()
+    If MsgBox("全データを消去します。元に戻せません。", vbOKCancel + vbExclamation + vbDefaultButton2, "確認") <> vbOK Then Exit Sub
+    Application.ScreenUpdating = False: Application.DisplayAlerts = False: Application.EnableEvents = False
+    On Error Resume Next
+    Dim ws As Worksheet, n() As String, c As Long: c = 0
+    For Each ws In ThisWorkbook.Sheets
+        If Left(ws.Name, 1) = "第" And Right(ws.Name, 1) = "週" Then ReDim Preserve n(c): n(c) = ws.Name: c = c + 1
+    Next ws
+    Dim i As Long
+    For i = 0 To c - 1: ThisWorkbook.Sheets(n(i)).Delete: Next i
+    Dim tm As Worksheet: Set tm = ThisWorkbook.Sheets("時間割マスター")
+    tm.Unprotect "": tm.Range("B3:F9").ClearContents: tm.Protect ""
+    Dim cfg As Worksheet: Set cfg = ThisWorkbook.Sheets("基本設定")
+    cfg.Unprotect ""
+    Dim rs As Variant: rs = Array("B2:B4", "B6:B14", "B16:B20", "C16:C17", "B23:B35", "B38:B43")
+    For i = 0 To UBound(rs): cfg.Range(CStr(rs(i))).ClearContents: Next i
+    学活方式を準備 cfg: 休業設定を準備 cfg: cfg.Protect ""
+    Application.EnableEvents = True: Application.DisplayAlerts = True: Application.ScreenUpdating = True
+End Sub
